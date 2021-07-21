@@ -1,6 +1,21 @@
 import scala.io.StdIn.readLine
 import scala.io.Source
 import scala.collection.mutable.ArrayBuffer
+import org.mongodb.scala.Observable._
+
+import org.mongodb.scala._
+import org.mongodb.scala.model.Aggregates._
+import org.mongodb.scala.model.Filters._
+import org.mongodb.scala.model.Projections._
+import org.mongodb.scala.model.Sorts._
+import org.mongodb.scala.model.Updates._
+import org.mongodb.scala.model._
+
+import scala.collection.JavaConverters._
+import org.mongodb.scala.bson.collection.mutable
+import org.apache.log4j.BasicConfigurator
+import com.mongodb.client.result.InsertOneResult
+import javax.ws.rs.core.Link.Builder
 
 object Vinlist{
     def main(args: Array[String]){
@@ -8,12 +23,13 @@ object Vinlist{
         var run = true
         while(run){
             //Main menu
-            println("+++++++++++++++++++++++++++")
-            println("+ Main menu               +")
-            println("+ 1 - read csv            +")
-            println("+ 2 - print current table +")
-            println("+ x - exit the program    +")
-            println("+++++++++++++++++++++++++++")
+            println("+++++++++++++++++++++++++++++")
+            println("+ Main menu                 +")
+            println("+ 1 - read csv              +")
+            println("+ 2 - print current table   +")
+            println("+ 3 - push table to MongoDB +")
+            println("+ x - exit the program      +")
+            println("+++++++++++++++++++++++++++++")
             print("Enter a menu option from the list: ")
             val userEntry = readLine()
             userEntry match {
@@ -23,10 +39,41 @@ object Vinlist{
                     table = readCSV(fileName)                    
                 }
                 case "2" => printTable(table)
+                case "3" => pushToDB(table)
                 case "x" => run = false
                 case _ =>
             }
         }
+    }
+
+    def pushToDB(table: ArrayBuffer[ArrayBuffer[String]]){
+        val mongoClient: MongoClient = MongoClient()
+        val database: MongoDatabase = mongoClient.getDatabase("test")
+        val collection: MongoCollection[Document] = database.getCollection("lists")
+        val headers = ArrayBuffer[String]()
+        for(i <- 0 to table(0).length-1){
+            headers += table(0)(i)
+        }
+        for(i <- 1 to table.length-1){
+            val docArray = ArrayBuffer[String]()
+            var doc = Document.apply()
+            for(j <- 0 to table(0).length-1){
+                docArray += table(i)(j)
+                doc += (headers(j) -> docArray(j))
+            }
+            // val doc: Document = Document("_id" -> 0, "name" -> "MongoDB", "type" -> "database",
+            //                     "count" -> 1, "info" -> Document("x" -> 203, "y" -> 102))
+            //val doc = Map(docArray.foreach())
+            val observable: Observable[InsertOneResult] = collection.insertOne(doc)          
+            observable.subscribe(new Observer[InsertOneResult]{
+                override def onSubscribe(subscription: Subscription): Unit = (subscription.request(1))
+                override def onNext(result: InsertOneResult): Unit = println(s"onNext $result")
+                override def onError(e: Throwable): Unit = println("Failed")
+                override def onComplete(): Unit = println("Completed")
+            })
+        }
+        mongoClient.close()
+
     }
 
     def readCSV(fileName: String): ArrayBuffer[ArrayBuffer[String]] = {
