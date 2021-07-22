@@ -19,6 +19,8 @@ import javax.ws.rs.core.Link.Builder
 
 object Vinlist{
     def main(args: Array[String]){
+        val mongoClient: MongoClient = MongoClient()
+        val database: MongoDatabase = mongoClient.getDatabase("test")
         var table = ArrayBuffer(ArrayBuffer[String]())
         var run = true
         var title = ""
@@ -48,16 +50,15 @@ object Vinlist{
                     table = readCSV(fileName)                    
                 }
                 case "2" => printTable(table, title)
-                case "3" => pushToDB(table, title)
+                case "3" => pushToDB(table, title, database)
                 case "x" => run = false
                 case _ =>
             }
         }
+        mongoClient.close()
     }
 
-    def pushToDB(table: ArrayBuffer[ArrayBuffer[String]], title: String){
-        val mongoClient: MongoClient = MongoClient()
-        val database: MongoDatabase = mongoClient.getDatabase("test")
+    def pushToDB(table: ArrayBuffer[ArrayBuffer[String]], title: String, database: MongoDatabase){
         val collection: MongoCollection[Document] = database.getCollection(title)
         val headers = ArrayBuffer[String]()
         for(i <- 0 to table(0).length-1){
@@ -78,25 +79,31 @@ object Vinlist{
                 override def onComplete(): Unit = println("Completed")
             })
         }
-        mongoClient.close()
-
     }
 
     def readCSV(fileName: String): ArrayBuffer[ArrayBuffer[String]] = {
-        val s = Source.fromFile(fileName).mkString
-        var arr = s.split("\n")
-        var arr2 = ArrayBuffer(ArrayBuffer[String]())
-        val temp = arr(0).split(",")
-        for(i <- 0 to arr.length-2){
-            arr2 += ArrayBuffer[String]()
+        try{            
+            val s = Source.fromFile(fileName).mkString        
+            var arr = s.split("\n")
+            var arr2 = ArrayBuffer(ArrayBuffer[String]())
+            val temp = arr(0).split(",")
+            for(i <- 0 to arr.length-2){
+                arr2 += ArrayBuffer[String]()
+            }
+            for(i <- 0 to arr2.length-1){
+                val temp = arr(i).split(",")
+                for(j <- 0 to temp.length-1){
+                    arr2(i) += temp(j).mkString
+                }
+            }
+            return arr2
         }
-        for(i <- 0 to arr2.length-1){
-            val temp = arr(i).split(",")
-            for(j <- 0 to temp.length-1){
-                arr2(i) += temp(j).mkString
+        catch{
+            case x: java.io.FileNotFoundException => {
+                println("File Not Found")
+                return ArrayBuffer(ArrayBuffer[String]())
             }
         }
-        return arr2
     }
 
     def printTable(arr2: ArrayBuffer[ArrayBuffer[String]], title: String){
