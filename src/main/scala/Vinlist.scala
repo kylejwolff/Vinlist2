@@ -21,6 +21,7 @@ object Vinlist{
     def main(args: Array[String]){
         var table = ArrayBuffer(ArrayBuffer[String]())
         var run = true
+        var title = ""
         while(run){
             //Main menu
             println("+++++++++++++++++++++++++++++")
@@ -36,20 +37,28 @@ object Vinlist{
                 case "1" => {
                     print("Enter a path: ")
                     val fileName = readLine()
+                    if(fileName.lastIndexOf('/') >= 0){
+                        title = fileName.substring(fileName.lastIndexOf('/')+1)
+                    }
+                    else if(fileName.lastIndexOf('\\') >= 0){
+                        title = fileName.substring(fileName.lastIndexOf('\\')+1)
+                    }
+                    title = title.substring(0,title.length-4)
+                    //println(s"TITLE:  $title")
                     table = readCSV(fileName)                    
                 }
-                case "2" => printTable(table)
-                case "3" => pushToDB(table)
+                case "2" => printTable(table, title)
+                case "3" => pushToDB(table, title)
                 case "x" => run = false
                 case _ =>
             }
         }
     }
 
-    def pushToDB(table: ArrayBuffer[ArrayBuffer[String]]){
+    def pushToDB(table: ArrayBuffer[ArrayBuffer[String]], title: String){
         val mongoClient: MongoClient = MongoClient()
         val database: MongoDatabase = mongoClient.getDatabase("test")
-        val collection: MongoCollection[Document] = database.getCollection("lists")
+        val collection: MongoCollection[Document] = database.getCollection(title)
         val headers = ArrayBuffer[String]()
         for(i <- 0 to table(0).length-1){
             headers += table(0)(i)
@@ -61,9 +70,6 @@ object Vinlist{
                 docArray += table(i)(j)
                 doc += (headers(j) -> docArray(j))
             }
-            // val doc: Document = Document("_id" -> 0, "name" -> "MongoDB", "type" -> "database",
-            //                     "count" -> 1, "info" -> Document("x" -> 203, "y" -> 102))
-            //val doc = Map(docArray.foreach())
             val observable: Observable[InsertOneResult] = collection.insertOne(doc)          
             observable.subscribe(new Observer[InsertOneResult]{
                 override def onSubscribe(subscription: Subscription): Unit = (subscription.request(1))
@@ -93,7 +99,8 @@ object Vinlist{
         return arr2
     }
 
-    def printTable(arr2: ArrayBuffer[ArrayBuffer[String]]){
+    def printTable(arr2: ArrayBuffer[ArrayBuffer[String]], title: String){
+        println(s"Title: $title")
         for(j <- 0 to arr2(0).length-1){
             if(arr2(0)(j).length < 6){
                 print("| " + arr2(0)(j) + "\t\t")
