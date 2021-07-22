@@ -24,6 +24,7 @@ object Vinlist{
         var table = ArrayBuffer(ArrayBuffer[String]())
         var run = true
         var title = ""
+        print("\u001b[2J")
         while(run){
             //Main menu
             println("+++++++++++++++++++++++++++++")
@@ -49,8 +50,14 @@ object Vinlist{
                     //println(s"TITLE:  $title")
                     table = readCSV(fileName)                    
                 }
-                case "2" => printTable(table, title)
-                case "3" => pushToDB(table, title, database)
+                case "2" => {
+                    print("\u001b[2J")
+                    printTable(table, title)
+                }
+                case "3" => {
+                    pushToDB(table, title, database)
+                    print("\u001b[2J")
+                }
                 case "x" => run = false
                 case _ =>
             }
@@ -74,7 +81,7 @@ object Vinlist{
             val observable: Observable[InsertOneResult] = collection.insertOne(doc)          
             observable.subscribe(new Observer[InsertOneResult]{
                 override def onSubscribe(subscription: Subscription): Unit = (subscription.request(1))
-                override def onNext(result: InsertOneResult): Unit = println(s"onNext $result")
+                override def onNext(result: InsertOneResult): Unit = println(s"Pushing: $result")
                 override def onError(e: Throwable): Unit = println("Failed")
                 override def onComplete(): Unit = println("Completed")
             })
